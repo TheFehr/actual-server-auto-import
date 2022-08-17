@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  actual_server:
+    image: thefehr/actual-server-auto-importer:dev
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5006"
+    volumes:
+      - actual_data:/data
+      - ./import:/import
+    restart: unless-stopped
+    env_file:
+      - .env
+
+volumes:
+  actual_data:

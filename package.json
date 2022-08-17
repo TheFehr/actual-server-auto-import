@@ -1,0 +1,17 @@
+{
+  "name": "actual-auto-importer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "importer.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actual-app/api": "^4.1.0",
+    "node-cron": "^3.0.2"
+  }
+}
