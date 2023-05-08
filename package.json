@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@actual-app/api": "^4.1.0",
+    "@actual-app/api": "file:actual-api.tgz",
     "node-cron": "^3.0.2"
   }
 }

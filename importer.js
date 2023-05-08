@@ -1,11 +1,34 @@
-const actual = require("@actual-app/api");
-const cron = require("node-cron");
-const { exit } = require("process");
+const api = require("@actual-app/api");
 const fs = require("fs");
 const path = require("path");
 
-const serverConfig = require("../load-config");
+
 let config = require("./load-config");
+
+
+(async () => {
+  if (!fs.existsSync('/tmp/actual')) {
+    fs.mkdirSync('/tmp/actual');
+  }
+
+  await api.init({
+    // Budget data will be cached locally here, in subdirectories for each file.
+    dataDir: '/tmp/actual',
+    // This is the URL of your running server
+    serverURL: 'https://actual.thefehr.ch/',
+    // This is the password you use to log into the server
+    password: 'Ux&$JUhAjuAtreqR$iZ4zHizZMJi&7Av$5CRguBipQ^2#',
+  });
+
+  // This is the ID from Settings → Show advanced settings → Sync ID
+  await api.methods.downloadBudget('9a8bf235-aa37-4987-9d82-c9adbc2eb783');
+
+  let budget = await api.methods.getBudgetMonth('2023-01');
+  console.log(budget);
+  await api.shutdown();
+})();
+
+return;
 
 const main = async () => {
   if (!envsPresent()) {
@@ -19,6 +42,12 @@ const main = async () => {
 
     exit(1);
   }
+
+  await actual.runWithBudget(config.budgetId, async () => {
+    return true;
+  });
+
+  return;
 
   await actual.init({
     config: { dataDir: serverConfig.userFiles },
@@ -86,8 +115,13 @@ const checkNewImport = async (config) => {
   }
 
   log(`Found ${importFiles.length} new imports!`, logLevels.indexOf("detail"));
-  await importTransactions(config, importFiles);
+  await importTransactions(
+    config.accountId,
+    config.importDirectory,
+    importFiles
+  );
   log("Import done", logLevels.indexOf("detail"));
+  await actual.internal.send("close-budget");
 
   if (!config.deleteOnSuccess) {
     return;
@@ -96,22 +130,27 @@ const checkNewImport = async (config) => {
   cleanImportDirectoy(config);
 };
 
-const importTransactions = async (config, importFiles) => {
+const importTransactions = async (accountId, importPath, importFiles) => {
   await actual.internal.send("load-budget", { id: config.budgetId });
 
-  importFiles.forEach(async (importFile) => {
-    log(`Importing ${importFile}`, logLevels.indexOf("debug"));
+  return Promise.all(
+    importFiles.map(async (importFile) => {
+      log(`Importing ${importFile}`, logLevels.indexOf("debug"));
 
-    const importDataRaw = fs.readFileSync(
-      path.join(config.importDirectory, importFile)
-    );
-    const importData = JSON.parse(importDataRaw);
+      const importDataRaw = fs.readFileSync(path.join(importPath, importFile));
+      const importData = JSON.parse(importDataRaw);
 
-    await actual.internal.send("transactions-import", {
-      accountId: config.accountId,
-      transactions: importData,
-    });
-  });
+      return actual.internal
+        .send("transactions-import", {
+          accountId: accountId,
+          transactions: importData,
+        })
+        .then(() => {
+          log(`Imported ${importFile}`, logLevels.indexOf("debug"));
+          return new Promise((res) => res());
+        });
+    })
+  );
 };
 
 const cleanImportDirectoy = (config) => {
@@ -134,4 +173,4 @@ const logError = (message, level = 0) => {
   }
 };
 
-main();
+module.exports = main;
